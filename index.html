@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-google {
+            background: #fff;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+        .btn-google img {
+            width: 20px;
+            margin-right: 10px;
+        }
+        .btn-facebook {
+            background: #1877f2;
+            color: white;
+        }
+        .btn-facebook img {
+            width: 20px;
+            margin-right: 10px;
+            filter: brightness(0) invert(1);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #999;
+            font-size: 14px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider::before { margin-right: 15px; }
+        .divider::after { margin-left: 15px; }
+        .note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Chào mừng bạn</h2>
+        <p class="subtitle">Đăng nhập để tiếp tục</p>
+
+        <!-- Nút đăng nhập Google -->
+        <button class="btn btn-google" onclick="alert('Đăng nhập Google')">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+            Đăng nhập với Google
+        </button>
+
+        <!-- Nút đăng nhập Facebook -->
+        <button class="btn btn-facebook" onclick="alert('Đăng nhập Facebook')">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook">
+            Đăng nhập với Facebook
+        </button>
+
+        <div class="divider">hoặc</div>
+
+        <p class="note">Bằng cách đăng nhập, bạn đồng ý với <a href="#" style="color:#667eea;">Điều khoản</a> của chúng tôi</p>
+    </div>
+</body>
+</html>Galaxy A15"
+                onkeydown="
+                    if(event.key==='Enter'){
+                        findDevice();
+                    }
+                "
+            >
+
+            <button onclick="findDevice()">
+                TÌM KIẾM
+            </button>
+
+        </div>
+
+        <div id="result"></div>
+
+    </div>
+
+
+    <!-- SELECT -->
+    <div class="card">
+
+        <h2>
+            📱 CHỌN NHANH
+        </h2>
+
+        <select id="deviceSelect"
+                onchange="selectDevice()">
+
+            <option value="">
+                -- Chọn dòng máy --
+            </option>
+
+        </select>
+
+        <div id="selectResult"></div>
+
+    </div>
+
+
+    <!-- INFO -->
+    <div class="card">
+
+        <h2>
+            ℹ️ THÔNG TIN
+        </h2>
+
+        <div class="note">
+
+            Database hiện có
+            <span class="count" id="deviceCount">0</span>
+            model mẫu.
+
+            <br><br>
+
+            Độ nhạy chỉ mang tính tham khảo.
+            Kết quả thực tế có thể thay đổi theo
+            thiết bị, màn hình, FPS và cách điều khiển.
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* ==================================================
+   DATABASE
+
+   [Tổng quát, Red Dot, 2X, 4X, Sniper, Free Look]
+================================================== */
+
+const devices = {
+
+    /* SAMSUNG */
+
+    "Samsung Galaxy A05":
+        [190,185,180,170,120,150],
+
+    "Samsung Galaxy A05s":
+        [190,185,180,170,120,150],
+
+    "Samsung Galaxy A14":
+        [190,185,180,170,120,150],
+
+    "Samsung Galaxy A15":
+        [190,185,180,170,120,150],
+
+    "Samsung Galaxy A24":
+        [188,183,178,168,118,148],
+
+    "Samsung Galaxy A25":
+        [185,180,175,165,115,145],
+
+    "Samsung Galaxy A34":
+        [185,180,175,165,115,145],
+
+    "Samsung Galaxy A54":
+        [180,175,170,160,110,140],
+
+    "Samsung Galaxy S21":
+        [180,175,170,160,110,140],
+
+    "Samsung Galaxy S22":
+        [178,173,168,158,108,138],
+
+    "Samsung Galaxy S23":
+        [175,170,165,155,105,135],
+
+    "Samsung Galaxy S24":
+        [175,170,165,155,105,135],
+
+
+    /* XIAOMI / REDMI */
+
+    "Redmi 9":
+        [190,185,180,170,120,150],
+
+    "Redmi 10":
+        [190,185,180,170,120,150],
+
+    "Redmi 12":
+        [190,185,180,170,120,150],
+
+    "Redmi Note 10":
+        [190,185,180,170,120,150],
+
+    "Redmi Note 11":
+        [190,185,180,170,120,150],
+
+    "Redmi Note 12":
+        [190,185,180,170,120,150],
+
+    "Redmi Note 13":
+        [190,185,180,170,120,150],
+
+    "POCO X3":
+        [185,180,175,165,115,145],
+
+    "POCO X5":
+        [185,180,175,165,115,145],
+
+    "POCO X6":
+        [180,175,170,160,110,140],
+
+
+    /* OPPO */
+
+    "OPPO A17":
+        [190,185,180,170,120,150],
+
+    "OPPO A38":
+        [190,185,180,170,120,150],
+
+    "OPPO A58":
+        [190,185,178,168,115,145],
+
+    "OPPO A78":
+        [185,180,175,165,115,145],
+
+    "OPPO Reno 8":
+        [180,175,170,160,110,140],
+
+    "OPPO Reno 10":
+        [180,175,170,160,110,140],
+
+
+    /* VIVO */
+
+    "Vivo Y21":
+        [190,185,180,170,120,150],
+
+    "Vivo Y22":
+        [190,185,180,170,120,150],
+
+    "Vivo Y35":
+        [188,183,178,168,118,148],
+
+    "Vivo Y36":
+        [188,183,177,167,115,145],
+
+    "Vivo V25":
+        [180,175,170,160,110,140],
+
+    "Vivo V29":
+        [178,173,168,158,108,138],
+
+
+    /* REALME */
+
+    "Realme C33":
+        [190,185,180,170,120,150],
+
+    "Realme C55":
+        [190,185,180,170,120,150],
+
+    "Realme 10":
+        [185,180,175,165,115,145],
+
+    "Realme 11":
+        [185,180,175,165,115,145],
+
+
+    /* INFINIX */
+
+    "Infinix Hot 30":
+        [190,185,180,170,120,150],
+
+    "Infinix Hot 40":
+        [190,185,180,170,120,150],
+
+    "Infinix Note 30":
+        [185,180,175,165,115,145],
+
+
+    /* IPHONE */
+
+    "iPhone X":
+        [180,175,170,160,110,140],
+
+    "iPhone XR":
+        [180,175,170,160,110,140],
+
+    "iPhone 11":
+        [180,175,170,160,110,140],
+
+    "iPhone 12":
+        [178,173,168,158,108,138],
+
+    "iPhone 13":
+        [175,170,165,155,105,135],
+
+    "iPhone 14":
+        [175,170,165,155,105,135],
+
+    "iPhone 15":
+        [172,167,162,152,102,132],
+
+    "iPhone 16":
+        [170,165,160,150,100,130]
+
+};
+
+
+/* ==================================================
+   RENDER
+================================================== */
+
+function setting(name,value){
+
+    return `
+        <div class="item">
+            <span>${name}</span>
+            <b>${value}</b>
+        </div>
+    `;
+}
+
+
+function renderDevice(name){
+
+    const data = devices[name];
+
+    if(!data){
+
+        return `
+            <div class="note">
+                ❌ Chưa có dữ liệu cho
+                <b>${escapeHTML(name)}</b>.
+
+                <br><br>
+
+                Model này chưa nằm trong database
+                của KAMADOXDONHAY V1.1.
+            </div>
+        `;
+    }
+
+    return `
+
+        <div class="device">
+            📱 DÒNG MÁY:
+            <b>${escapeHTML(name)}</b>
+        </div>
+
+        <div class="grid">
+
+            ${setting("Tổng quát",data[0])}
+
+            ${setting("Red Dot",data[1])}
+
+            ${setting("2X Scope",data[2])}
+
+            ${setting("4X Scope",data[3])}
+
+            ${setting("Sniper Scope",data[4])}
+
+            ${setting("Free Look",data[5])}
+
+        </div>
+
+        <div class="note">
+            🎯 Cấu hình tham khảo cho Free Fire.
+        </div>
+    `;
+}
+
+
+/* ==================================================
+   SEARCH
+================================================== */
+
+function findDevice(){
+
+    const input =
+        document
+        .getElementById("searchInput")
+        .value
+        .trim();
+
+    const result =
+        document.getElementById("result");
+
+    if(!input){
+
+        result.innerHTML =
+        `<div class="note">
+            ⚠️ Hãy nhập tên dòng máy.
+        </div>`;
+
+        return;
+    }
+
+    const lower = input.toLowerCase();
+
+    /* Tìm chính xác */
+
+    let found =
+        Object.keys(devices).find(
+            name => name.toLowerCase() === lower
+        );
+
+    /* Nếu không chính xác thì tìm gần đúng */
+
+    if(!found){
+
+        found =
+            Object.keys(devices).find(
+                name =>
+                name.toLowerCase().includes(lower)
+            );
+    }
+
+    result.innerHTML =
+        renderDevice(found || input);
+}
+
+
+/* ==================================================
+   SELECT
+================================================== */
+
+function loadSelect(){
+
+    const select =
+        document.getElementById("deviceSelect");
+
+    Object.keys(devices)
+        .sort()
+        .forEach(name => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = name;
+            option.textContent = name;
+
+            select.appendChild(option);
+
+        });
+}
+
+
+function selectDevice(){
+
+    const name =
+        document.getElementById("deviceSelect")
+        .value;
+
+    document.getElementById("selectResult")
+        .innerHTML =
+        name ? renderDevice(name) : "";
+}
+
+
+/* ==================================================
+   DATABASE COUNT
+================================================== */
+
+function showDatabase(){
+
+    document.getElementById("result")
+        .innerHTML = `
+
+        <div class="note">
+
+            📊 DATABASE KAMADOXDONHAY V1.1
+
+            <br><br>
+
+            Hiện có:
+            <span class="count">
+                ${Object.keys(devices).length}
+            </span>
+            model mẫu.
+
+            <br><br>
+
+            Nhập chính xác tên model để xem
+            cấu hình tương ứng.
+
+        </div>
+    `;
+
+    document
+        .getElementById("searchCard")
+        .scrollIntoView({
+            behavior:"smooth"
+        });
+}
+
+
+/* ==================================================
+   RESET
+================================================== */
+
+function resetAll(){
+
+    document.getElementById("searchInput")
+        .value = "";
+
+    document.getElementById("deviceSelect")
+        .value = "";
+
+    document.getElementById("result")
+        .innerHTML = "";
+
+    document.getElementById("selectResult")
+        .innerHTML = "";
+}
+
+
+/* ==================================================
+   FOCUS
+================================================== */
+
+function focusSearch(){
+
+    document
+        .getElementById("searchCard")
+        .scrollIntoView({
+            behavior:"smooth"
+        });
+
+    setTimeout(() => {
+
+        document
+            .getElementById("searchInput")
+            .focus();
+
+    },400);
+}
+
+
+/* ==================================================
+   HTML ESCAPE
+================================================== */
+
+function escapeHTML(text){
+
+    return text
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+
+/* ==================================================
+   START
+================================================== */
+
+document.getElementById("deviceCount")
+    .textContent = Object.keys(devices).length;
+
+loadSelect();
+
+</script>
+
+</body>
+</html>
