@@ -1,0 +1,931 @@
+-- DANGKHOAPNG Menu (Welcome Popup + Clean Tabbed UI + Draggable Toggle + All Features + External Scripts)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+local WELCOME_MESSAGE = [[╭━━━『 ❤️ THANK YOU ❤️ 』━━━╮
+
+Cảm ơn mọi người đã tin tưởng và sử dụng Script của KHOA! 🪽
+KHOA xin chúc mọi người luôn vui vẻ, may mắn và có một ngày thật tuyệt vời! ❤️
+
+╰━━━━ BY: DANGKHOAPNGSCRIPT ━━━━╯]]
+
+local state = {
+	-- Thay bằng Asset ID trên Roblox từ ảnh 1000021175_2.jpg, ví dụ: "rbxassetid://1000021175_2.jpg"
+	BannerImageId = "rbxassetid:/1000021175_2.jpg",
+	ShowWelcomeOnOpen = true,
+
+	-- Combat & Visuals
+	Aimlock = false,
+	AimFOV = 160,
+	ShowFOV = true,
+	ESP = false,
+	XRay = false,
+
+	-- Character & Movement
+	Invisible = false,
+	WalkSpeedEnabled = false,
+	WalkSpeedValue = 36,
+	JumpPowerEnabled = false,
+	JumpPowerValue = 75,
+	FlyEnabled = false,
+	FlySpeed = 50,
+	NoclipEnabled = false,
+
+	-- Music
+	MusicPlaying = false,
+	MusicId = ""
+}
+
+local espObjects = {}
+local savedTransparencies = {}
+local xraySavedParts = {}
+local savedCanCollide = {}
+local bodyVelocity = nil
+local bodyGyro = nil
+
+-- Trình phát nhạc theo Sound ID
+local musicSound = Instance.new("Sound")
+musicSound.Name = "DANGKHOAPNG_MusicSound"
+musicSound.Looped = true
+musicSound.Volume = 0.65
+musicSound.Parent = SoundService
+
+-- Chạy script ngoài an toàn
+local function runExternalScript(url, label)
+	task.spawn(function()
+		local ok, err = pcall(function()
+			local source = game:HttpGet(url)
+			local fn = loadstring(source)
+			if type(fn) == "function" then
+				fn()
+			else
+				warn("[DANGKHOAPNG] Không biên dịch được script: " .. tostring(label))
+			end
+		end)
+		if not ok then
+			warn("[DANGKHOAPNG] Lỗi khi chạy " .. tostring(label) .. ": " .. tostring(err))
+		end
+	end)
+end
+
+-- Kéo thả UI
+local function makeDraggable(guiObject, dragHandle)
+	dragHandle = dragHandle or guiObject
+	local dragging = false
+	local dragInput = nil
+	local dragStart = nil
+	local startPos = nil
+
+	dragHandle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = guiObject.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	dragHandle.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			guiObject.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+-- Tạo giao diện + bảng thông báo khi mở menu
+local function createUI()
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "DANGKHOAPNG_GUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
+	screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+	-- Vòng tròn Aim FOV
+	local fovCircle = Instance.new("Frame")
+	fovCircle.Name = "AimFOVCircle"
+	fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+	fovCircle.Size = UDim2.fromOffset(state.AimFOV * 2, state.AimFOV * 2)
+	fovCircle.BackgroundTransparency = 1
+	fovCircle.Visible = state.Aimlock and state.ShowFOV
+	fovCircle.Parent = screenGui
+
+	local fovStroke = Instance.new("UIStroke")
+	fovStroke.Color = Color3.fromRGB(0, 215, 255)
+	fovStroke.Thickness = 1.5
+	fovStroke.Transparency = 0.2
+	fovStroke.Parent = fovCircle
+
+	local fovCorner = Instance.new("UICorner")
+	fovCorner.CornerRadius = UDim.new(1, 0)
+	fovCorner.Parent = fovCircle
+
+	-- Khung thông báo lời cảm ơn khi mở menu
+	local welcomeFrame = Instance.new("Frame")
+	welcomeFrame.Name = "WelcomeBannerFrame"
+	welcomeFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	welcomeFrame.Size = UDim2.new(0, 340, 0, 175)
+	welcomeFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	welcomeFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+	welcomeFrame.BorderSizePixel = 0
+	welcomeFrame.Visible = false
+	welcomeFrame.ZIndex = 20
+	welcomeFrame.Parent = screenGui
+
+	local welcomeCorner = Instance.new("UICorner")
+	welcomeCorner.CornerRadius = UDim.new(0, 12)
+	welcomeCorner.Parent = welcomeFrame
+
+	local welcomeStroke = Instance.new("UIStroke")
+	welcomeStroke.Color = Color3.fromRGB(255, 95, 130)
+	welcomeStroke.Thickness = 1.5
+	welcomeStroke.Parent = welcomeFrame
+
+	local welcomeLabel = Instance.new("TextLabel")
+	welcomeLabel.Size = UDim2.new(1, -24, 1, -44)
+	welcomeLabel.Position = UDim2.new(0, 12, 0, 8)
+	welcomeLabel.BackgroundTransparency = 1
+	welcomeLabel.TextColor3 = Color3.fromRGB(255, 245, 248)
+	welcomeLabel.Font = Enum.Font.GothamSemibold
+	welcomeLabel.TextSize = 12
+	welcomeLabel.TextWrapped = true
+	welcomeLabel.TextYAlignment = Enum.TextYAlignment.Center
+	welcomeLabel.Text = WELCOME_MESSAGE
+	welcomeLabel.ZIndex = 21
+	welcomeLabel.Parent = welcomeFrame
+
+	local closeWelcomeBtn = Instance.new("TextButton")
+	closeWelcomeBtn.Size = UDim2.new(0, 96, 0, 26)
+	closeWelcomeBtn.AnchorPoint = Vector2.new(0.5, 1)
+	closeWelcomeBtn.Position = UDim2.new(0.5, 0, 1, -8)
+	closeWelcomeBtn.BackgroundColor3 = Color3.fromRGB(220, 65, 105)
+	closeWelcomeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeWelcomeBtn.Font = Enum.Font.GothamBold
+	closeWelcomeBtn.TextSize = 11
+	closeWelcomeBtn.Text = "ĐÓNG [OK]"
+	closeWelcomeBtn.ZIndex = 21
+	closeWelcomeBtn.Parent = welcomeFrame
+
+	local closeWelcomeCorner = Instance.new("UICorner")
+	closeWelcomeCorner.CornerRadius = UDim.new(0, 6)
+	closeWelcomeCorner.Parent = closeWelcomeBtn
+
+	local hideWelcomeTask = nil
+	local function showWelcomePopup()
+		if not state.ShowWelcomeOnOpen then return end
+		if hideWelcomeTask then
+			task.cancel(hideWelcomeTask)
+			hideWelcomeTask = nil
+		end
+		welcomeFrame.Visible = true
+		hideWelcomeTask = task.delay(6, function()
+			if welcomeFrame and welcomeFrame.Parent then
+				welcomeFrame.Visible = false
+			end
+		end)
+	end
+
+	closeWelcomeBtn.MouseButton1Click:Connect(function()
+		if hideWelcomeTask then
+			task.cancel(hideWelcomeTask)
+			hideWelcomeTask = nil
+		end
+		welcomeFrame.Visible = false
+	end)
+
+	-- Cụm nút bật tắt menu có ảnh ngay cạnh (kéo thả được)
+	local toggleDock = Instance.new("Frame")
+	toggleDock.Name = "ToggleMenuDock"
+	toggleDock.Size = UDim2.new(0, 206, 0, 46)
+	toggleDock.Position = UDim2.new(0, 18, 0, 76)
+	toggleDock.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	toggleDock.BorderSizePixel = 0
+	toggleDock.Parent = screenGui
+
+	local dockCorner = Instance.new("UICorner")
+	dockCorner.CornerRadius = UDim.new(0, 10)
+	dockCorner.Parent = toggleDock
+
+	local dockStroke = Instance.new("UIStroke")
+	dockStroke.Color = Color3.fromRGB(0, 195, 255)
+	dockStroke.Thickness = 1
+	dockStroke.Parent = toggleDock
+
+	local toggleAvatar = Instance.new("ImageLabel")
+	toggleAvatar.Name = "ToggleMenuImage"
+	toggleAvatar.Size = UDim2.new(0, 38, 0, 38)
+	toggleAvatar.Position = UDim2.new(0, 4, 0.5, -19)
+	toggleAvatar.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+	toggleAvatar.Image = state.BannerImageId
+	toggleAvatar.ScaleType = Enum.ScaleType.Crop
+	toggleAvatar.Parent = toggleDock
+
+	local avatarCorner = Instance.new("UICorner")
+	avatarCorner.CornerRadius = UDim.new(0, 8)
+	avatarCorner.Parent = toggleAvatar
+
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Name = "ToggleMenuButton"
+	toggleBtn.Size = UDim2.new(1, -50, 1, -8)
+	toggleBtn.Position = UDim2.new(0, 46, 0, 4)
+	toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+	toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleBtn.Font = Enum.Font.GothamBold
+	toggleBtn.TextSize = 11
+	toggleBtn.Text = "DANGKHOAPNG [ON]"
+	toggleBtn.Parent = toggleDock
+
+	local toggleBtnCorner = Instance.new("UICorner")
+	toggleBtnCorner.CornerRadius = UDim.new(0, 7)
+	toggleBtnCorner.Parent = toggleBtn
+
+	-- Khung menu chính gọn gàng
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainMenuFrame"
+	mainFrame.Size = UDim2.new(0, 260, 0, 360)
+	mainFrame.Position = UDim2.new(0, 18, 0, 128)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Visible = true
+	mainFrame.Parent = screenGui
+
+	local mainCorner = Instance.new("UICorner")
+	mainCorner.CornerRadius = UDim.new(0, 12)
+	mainCorner.Parent = mainFrame
+
+	local mainStroke = Instance.new("UIStroke")
+	mainStroke.Color = Color3.fromRGB(48, 48, 66)
+	mainStroke.Thickness = 1
+	mainStroke.Parent = mainFrame
+
+	-- Thanh kéo thả menu
+	local header = Instance.new("Frame")
+	header.Name = "Header"
+	header.Size = UDim2.new(1, 0, 0, 34)
+	header.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+	header.BorderSizePixel = 0
+	header.Parent = mainFrame
+
+	local headerCorner = Instance.new("UICorner")
+	headerCorner.CornerRadius = UDim.new(0, 12)
+	headerCorner.Parent = header
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, -16, 1, 0)
+	titleLabel.Position = UDim2.new(0, 12, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.TextColor3 = Color3.fromRGB(0, 215, 255)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 13
+	titleLabel.Text = "DANGKHOAPNG"
+	titleLabel.Parent = header
+
+	makeDraggable(mainFrame, header)
+	makeDraggable(toggleDock, toggleDock)
+
+	-- Thanh chuyển tab (MAIN / SCRIPTS)
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "TabBar"
+	tabBar.Size = UDim2.new(1, -12, 0, 26)
+	tabBar.Position = UDim2.new(0, 6, 0, 38)
+	tabBar.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+	tabBar.Parent = mainFrame
+
+	local tabCorner = Instance.new("UICorner")
+	tabCorner.CornerRadius = UDim.new(0, 6)
+	tabCorner.Parent = tabBar
+
+	local mainTabBtn = Instance.new("TextButton")
+	mainTabBtn.Size = UDim2.new(0.5, -3, 1, -4)
+	mainTabBtn.Position = UDim2.new(0, 2, 0, 2)
+	mainTabBtn.BackgroundColor3 = Color3.fromRGB(0, 125, 215)
+	mainTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	mainTabBtn.Font = Enum.Font.GothamBold
+	mainTabBtn.TextSize = 11
+	mainTabBtn.Text = "MAIN"
+	mainTabBtn.Parent = tabBar
+
+	local mainTabCorner = Instance.new("UICorner")
+	mainTabCorner.CornerRadius = UDim.new(0, 5)
+	mainTabCorner.Parent = mainTabBtn
+
+	local scriptsTabBtn = Instance.new("TextButton")
+	scriptsTabBtn.Size = UDim2.new(0.5, -3, 1, -4)
+	scriptsTabBtn.Position = UDim2.new(0.5, 1, 0, 2)
+	scriptsTabBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+	scriptsTabBtn.TextColor3 = Color3.fromRGB(200, 205, 215)
+	scriptsTabBtn.Font = Enum.Font.GothamBold
+	scriptsTabBtn.TextSize = 11
+	scriptsTabBtn.Text = "SCRIPTS (6)"
+	scriptsTabBtn.Parent = tabBar
+
+	local scriptsTabCorner = Instance.new("UICorner")
+	scriptsTabCorner.CornerRadius = UDim.new(0, 5)
+	scriptsTabCorner.Parent = scriptsTabBtn
+
+	local function makePage()
+		local page = Instance.new("ScrollingFrame")
+		page.Size = UDim2.new(1, -12, 1, -72)
+		page.Position = UDim2.new(0, 6, 0, 68)
+		page.BackgroundTransparency = 1
+		page.ScrollBarThickness = 3
+		page.CanvasSize = UDim2.new(0, 0, 0, 0)
+		page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		page.Parent = mainFrame
+
+		local layout = Instance.new("UIListLayout")
+		layout.Padding = UDim.new(0, 5)
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = page
+
+		return page
+	end
+
+	local mainPage = makePage()
+	mainPage.Visible = true
+
+	local scriptsPage = makePage()
+	scriptsPage.Visible = false
+
+	mainTabBtn.MouseButton1Click:Connect(function()
+		mainPage.Visible = true
+		scriptsPage.Visible = false
+		mainTabBtn.BackgroundColor3 = Color3.fromRGB(0, 125, 215)
+		mainTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		scriptsTabBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+		scriptsTabBtn.TextColor3 = Color3.fromRGB(200, 205, 215)
+	end)
+
+	scriptsTabBtn.MouseButton1Click:Connect(function()
+		mainPage.Visible = false
+		scriptsPage.Visible = true
+		scriptsTabBtn.BackgroundColor3 = Color3.fromRGB(0, 125, 215)
+		scriptsTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		mainTabBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+		scriptsTabBtn.TextColor3 = Color3.fromRGB(200, 205, 215)
+	end)
+
+	local function createToggle(parent, name, defaultOn, callback)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0.97, 0, 0, 28)
+		btn.BackgroundColor3 = defaultOn and Color3.fromRGB(0, 135, 90) or Color3.fromRGB(30, 30, 42)
+		btn.TextColor3 = Color3.fromRGB(242, 242, 248)
+		btn.Font = Enum.Font.GothamSemibold
+		btn.TextSize = 11
+		btn.Text = name .. (defaultOn and ": ON" or ": OFF")
+		btn.Parent = parent
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = btn
+
+		local active = defaultOn
+		btn.MouseButton1Click:Connect(function()
+			active = not active
+			btn.Text = name .. (active and ": ON" or ": OFF")
+			btn.BackgroundColor3 = active and Color3.fromRGB(0, 135, 90) or Color3.fromRGB(30, 30, 42)
+			callback(active)
+		end)
+	end
+
+	local function createNumberControl(parent, labelText, initialValue, step, minVal, maxVal, onChanged)
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(0.97, 0, 0, 28)
+		row.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		row.Parent = parent
+
+		local rowCorner = Instance.new("UICorner")
+		rowCorner.CornerRadius = UDim.new(0, 6)
+		rowCorner.Parent = row
+
+		local minusBtn = Instance.new("TextButton")
+		minusBtn.Size = UDim2.new(0, 24, 1, -6)
+		minusBtn.Position = UDim2.new(0, 3, 0, 3)
+		minusBtn.BackgroundColor3 = Color3.fromRGB(44, 44, 58)
+		minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		minusBtn.Font = Enum.Font.GothamBold
+		minusBtn.TextSize = 13
+		minusBtn.Text = "-"
+		minusBtn.Parent = row
+
+		local minusCorner = Instance.new("UICorner")
+		minusCorner.CornerRadius = UDim.new(0, 5)
+		minusCorner.Parent = minusBtn
+
+		local plusBtn = Instance.new("TextButton")
+		plusBtn.Size = UDim2.new(0, 24, 1, -6)
+		plusBtn.Position = UDim2.new(1, -27, 0, 3)
+		plusBtn.BackgroundColor3 = Color3.fromRGB(44, 44, 58)
+		plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		plusBtn.Font = Enum.Font.GothamBold
+		plusBtn.TextSize = 13
+		plusBtn.Text = "+"
+		plusBtn.Parent = row
+
+		local plusCorner = Instance.new("UICorner")
+		plusCorner.CornerRadius = UDim.new(0, 5)
+		plusCorner.Parent = plusBtn
+
+		local valueLabel = Instance.new("TextLabel")
+		valueLabel.Size = UDim2.new(1, -60, 1, 0)
+		valueLabel.Position = UDim2.new(0, 30, 0, 0)
+		valueLabel.BackgroundTransparency = 1
+		valueLabel.TextColor3 = Color3.fromRGB(225, 230, 240)
+		valueLabel.Font = Enum.Font.GothamSemibold
+		valueLabel.TextSize = 11
+		valueLabel.Text = string.format("%s: %d", labelText, initialValue)
+		valueLabel.Parent = row
+
+		local currentVal = initialValue
+		local function updateVal(newVal)
+			currentVal = math.clamp(newVal, minVal, maxVal)
+			valueLabel.Text = string.format("%s: %d", labelText, currentVal)
+			onChanged(currentVal)
+		end
+
+		minusBtn.MouseButton1Click:Connect(function()
+			updateVal(currentVal - step)
+		end)
+
+		plusBtn.MouseButton1Click:Connect(function()
+			updateVal(currentVal + step)
+		end)
+	end
+
+	local function createMusicBox(parent)
+		local box = Instance.new("Frame")
+		box.Size = UDim2.new(0.97, 0, 0, 60)
+		box.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+		box.Parent = parent
+
+		local boxCorner = Instance.new("UICorner")
+		boxCorner.CornerRadius = UDim.new(0, 7)
+		boxCorner.Parent = box
+
+		local input = Instance.new("TextBox")
+		input.Size = UDim2.new(1, -10, 0, 24)
+		input.Position = UDim2.new(0, 5, 0, 5)
+		input.BackgroundColor3 = Color3.fromRGB(36, 36, 48)
+		input.TextColor3 = Color3.fromRGB(255, 255, 255)
+		input.PlaceholderColor3 = Color3.fromRGB(150, 155, 170)
+		input.Font = Enum.Font.Gotham
+		input.TextSize = 11
+		input.ClearTextOnFocus = false
+		input.PlaceholderText = "ID nhạc Roblox (vd: 1837849285)"
+		input.Text = ""
+		input.Parent = box
+
+		local inputCorner = Instance.new("UICorner")
+		inputCorner.CornerRadius = UDim.new(0, 5)
+		inputCorner.Parent = input
+
+		local playBtn = Instance.new("TextButton")
+		playBtn.Size = UDim2.new(0.49, -4, 0, 22)
+		playBtn.Position = UDim2.new(0, 5, 0, 33)
+		playBtn.BackgroundColor3 = Color3.fromRGB(0, 125, 215)
+		playBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		playBtn.Font = Enum.Font.GothamBold
+		playBtn.TextSize = 10
+		playBtn.Text = "PHÁT NHẠC"
+		playBtn.Parent = box
+
+		local playCorner = Instance.new("UICorner")
+		playCorner.CornerRadius = UDim.new(0, 5)
+		playCorner.Parent = playBtn
+
+		local stopBtn = Instance.new("TextButton")
+		stopBtn.Size = UDim2.new(0.49, -4, 0, 22)
+		stopBtn.Position = UDim2.new(0.51, 0, 0, 33)
+		stopBtn.BackgroundColor3 = Color3.fromRGB(155, 45, 55)
+		stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		stopBtn.Font = Enum.Font.GothamBold
+		stopBtn.TextSize = 10
+		stopBtn.Text = "TẮT NHẠC"
+		stopBtn.Parent = box
+
+		local stopCorner = Instance.new("UICorner")
+		stopCorner.CornerRadius = UDim.new(0, 5)
+		stopCorner.Parent = stopBtn
+
+		playBtn.MouseButton1Click:Connect(function()
+			local digits = input.Text:gsub("%D", "")
+			if digits ~= "" then
+				state.MusicId = "rbxassetid://" .. digits
+				musicSound.SoundId = state.MusicId
+				musicSound:Play()
+				state.MusicPlaying = true
+				playBtn.Text = "ĐANG PHÁT"
+			end
+		end)
+
+		stopBtn.MouseButton1Click:Connect(function()
+			musicSound:Stop()
+			state.MusicPlaying = false
+			playBtn.Text = "PHÁT NHẠC"
+		end)
+	end
+
+	local function createScriptButton(parent, text, onClick)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0.97, 0, 0, 30)
+		btn.BackgroundColor3 = Color3.fromRGB(38, 58, 98)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 11
+		btn.Text = text
+		btn.Parent = parent
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = btn
+
+		btn.MouseButton1Click:Connect(onClick)
+	end
+
+	local function toggleMenu()
+		local opening = not mainFrame.Visible
+		mainFrame.Visible = opening
+		toggleBtn.Text = opening and "DANGKHOAPNG [ON]" or "DANGKHOAPNG [OFF]"
+		if opening then
+			showWelcomePopup()
+		end
+	end
+
+	toggleBtn.MouseButton1Click:Connect(toggleMenu)
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not gameProcessed and input.KeyCode == Enum.KeyCode.RightShift then
+			toggleMenu()
+		end
+	end)
+
+	-- Hiển thị lời chào ngay lần đầu mở menu
+	if mainFrame.Visible then
+		showWelcomePopup()
+	end
+
+	return {
+		MainPage = mainPage,
+		ScriptsPage = scriptsPage,
+		Toggle = createToggle,
+		Number = createNumberControl,
+		MusicBox = createMusicBox,
+		ScriptBtn = createScriptButton,
+		FovCircle = fovCircle,
+		ShowWelcome = showWelcomePopup
+	}
+end
+
+-- ESP
+local function clearESP()
+	for _, h in pairs(espObjects) do
+		if h and h.Parent then
+			h:Destroy()
+		end
+	end
+	table.clear(espObjects)
+end
+
+local function applyESP(player, character)
+	if player == localPlayer or not character then return end
+	if espObjects[player] then
+		espObjects[player]:Destroy()
+	end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "DANGKHOAPNG_ESP"
+	highlight.FillColor = Color3.fromRGB(255, 60, 60)
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.FillTransparency = 0.5
+	highlight.OutlineTransparency = 0
+	highlight.Adornee = character
+	highlight.Parent = character
+
+	espObjects[player] = highlight
+end
+
+local function setESP(enabled)
+	state.ESP = enabled
+	clearESP()
+	if enabled then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= localPlayer and p.Character then
+				applyESP(p, p.Character)
+			end
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(char)
+		if state.ESP then
+			applyESP(player, char)
+		end
+	end)
+end)
+
+-- X-Ray
+local function isCharPart(part)
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character and part:IsDescendantOf(p.Character) then
+			return true
+		end
+	end
+	return false
+end
+
+local function setXRay(enabled)
+	state.XRay = enabled
+	if enabled then
+		table.clear(xraySavedParts)
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			if obj:IsA("BasePart") and not isCharPart(obj) and obj.Transparency < 0.75 then
+				xraySavedParts[obj] = obj.LocalTransparencyModifier
+				obj.LocalTransparencyModifier = 0.75
+			end
+		end
+	else
+		for part, mod in pairs(xraySavedParts) do
+			if part and part.Parent then
+				part.LocalTransparencyModifier = mod
+			end
+		end
+		table.clear(xraySavedParts)
+	end
+end
+
+-- Invisible
+local function setInvisible(enabled)
+	state.Invisible = enabled
+	local char = localPlayer.Character
+	if not char then return end
+
+	if enabled then
+		table.clear(savedTransparencies)
+		for _, d in ipairs(char:GetDescendants()) do
+			if (d:IsA("BasePart") and d.Name ~= "HumanoidRootPart") or d:IsA("Decal") then
+				savedTransparencies[d] = d.Transparency
+				d.Transparency = 1
+			end
+		end
+	else
+		for inst, orig in pairs(savedTransparencies) do
+			if inst and inst.Parent then
+				inst.Transparency = orig
+			end
+		end
+		table.clear(savedTransparencies)
+	end
+end
+
+-- WalkSpeed & JumpPower
+local function applyWalkSpeed()
+	local char = localPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.WalkSpeed = state.WalkSpeedEnabled and state.WalkSpeedValue or 16
+	end
+end
+
+local function applyJumpPower()
+	local char = localPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.UseJumpPower = true
+		hum.JumpPower = state.JumpPowerEnabled and state.JumpPowerValue or 50
+	end
+end
+
+-- Fly
+local function stopFly()
+	if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+	if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+	local char = localPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.PlatformStand = false
+	end
+end
+
+local function startFly()
+	stopFly()
+	local char = localPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then return end
+
+	hum.PlatformStand = true
+
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.Name = "DANGKHOAPNG_FlyVel"
+	bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bodyVelocity.Velocity = Vector3.zero
+	bodyVelocity.Parent = root
+
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.Name = "DANGKHOAPNG_FlyGyro"
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.P = 1e4
+	bodyGyro.CFrame = root.CFrame
+	bodyGyro.Parent = root
+end
+
+local function setFly(enabled)
+	state.FlyEnabled = enabled
+	if enabled then
+		startFly()
+	else
+		stopFly()
+	end
+end
+
+-- Noclip
+local function applyNoclip()
+	local char = localPlayer.Character
+	if not char then return end
+
+	if state.NoclipEnabled then
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") then
+				if savedCanCollide[p] == nil then
+					savedCanCollide[p] = p.CanCollide
+				end
+				p.CanCollide = false
+			end
+		end
+	else
+		for p, orig in pairs(savedCanCollide) do
+			if p and p.Parent then
+				p.CanCollide = orig
+			end
+		end
+		table.clear(savedCanCollide)
+	end
+end
+
+-- Aimlock
+local function getClosestTargetInFOV()
+	local mousePos = UserInputService:GetMouseLocation()
+	local closestPart = nil
+	local closestDist = state.AimFOV
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= localPlayer and p.Character then
+			local hum = p.Character:FindFirstChildOfClass("Humanoid")
+			local aimPart = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
+			if hum and hum.Health > 0 and aimPart then
+				local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+					if dist <= closestDist then
+						closestDist = dist
+						closestPart = aimPart
+					end
+				end
+			end
+		end
+	end
+
+	return closestPart
+end
+
+-- Khởi tạo UI & chức năng
+local ui = createUI()
+local mp = ui.MainPage
+local sp = ui.ScriptsPage
+
+ui.Toggle(mp, "Aimlock", false, function(v)
+	state.Aimlock = v
+	ui.FovCircle.Visible = v and state.ShowFOV
+end)
+ui.Number(mp, "Aim FOV", state.AimFOV, 20, 40, 500, function(v)
+	state.AimFOV = v
+	ui.FovCircle.Size = UDim2.fromOffset(v * 2, v * 2)
+end)
+ui.Toggle(mp, "ESP", false, setESP)
+ui.Toggle(mp, "X-Ray", false, setXRay)
+ui.Toggle(mp, "Invisible", false, setInvisible)
+ui.Toggle(mp, "WalkSpeed", false, function(v)
+	state.WalkSpeedEnabled = v
+	applyWalkSpeed()
+end)
+ui.Number(mp, "Speed", state.WalkSpeedValue, 4, 16, 200, function(v)
+	state.WalkSpeedValue = v
+	if state.WalkSpeedEnabled then applyWalkSpeed() end
+end)
+ui.Toggle(mp, "JumpPower", false, function(v)
+	state.JumpPowerEnabled = v
+	applyJumpPower()
+end)
+ui.Number(mp, "Jump", state.JumpPowerValue, 10, 50, 300, function(v)
+	state.JumpPowerValue = v
+	if state.JumpPowerEnabled then applyJumpPower() end
+end)
+ui.Toggle(mp, "Fly", false, setFly)
+ui.Number(mp, "Fly Speed", state.FlySpeed, 10, 10, 250, function(v)
+	state.FlySpeed = v
+end)
+ui.Toggle(mp, "Noclip", false, function(v)
+	state.NoclipEnabled = v
+	applyNoclip()
+end)
+ui.MusicBox(mp)
+
+-- Tab SCRIPTS (6 script bạn yêu cầu)
+ui.ScriptBtn(sp, "FlyGuiV3", function()
+	runExternalScript("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt", "FlyGuiV3")
+end)
+ui.ScriptBtn(sp, "Anti-Slap / Anti-Fling", function()
+	runExternalScript("https://rawscripts.net/raw/Universal-Script-Anti-Slap-or-Fling-FOR-TROLL-GAMES-40702", "Anti-Slap/Fling")
+end)
+ui.ScriptBtn(sp, "7yd7 Emote Script", function()
+	runExternalScript("https://rawscripts.net/raw/Universal-Script-7yd7-I-Emote-Script-48024", "7yd7 Emote")
+end)
+ui.ScriptBtn(sp, "Simple Shader", function()
+	runExternalScript("https://rawscripts.net/raw/Universal-Script-Simple-Shader-37434", "Simple Shader")
+end)
+ui.ScriptBtn(sp, "Spider Script", function()
+	runExternalScript("https://pastefy.app/wa3v2Vgm/raw", "Spider Script")
+end)
+ui.ScriptBtn(sp, "Tipis Tower 2 Music Gui", function()
+	runExternalScript("https://rawscripts.net/raw/Tipis-tower-2-Music-Gui-50756", "Music Gui")
+end)
+
+-- Vòng lặp chính
+RunService.RenderStepped:Connect(function()
+	local mousePos = UserInputService:GetMouseLocation()
+	ui.FovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
+	ui.FovCircle.Visible = state.Aimlock and state.ShowFOV
+
+	if state.Aimlock then
+		local target = getClosestTargetInFOV()
+		if target then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+		end
+	end
+
+	if state.WalkSpeedEnabled then applyWalkSpeed() end
+	if state.JumpPowerEnabled then applyJumpPower() end
+	if state.NoclipEnabled then applyNoclip() end
+
+	if state.FlyEnabled and bodyVelocity and bodyGyro then
+		local char = localPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if root and hum then
+			local moveDir = hum.MoveDirection
+			local vertical = 0
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical += 1 end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then vertical -= 1 end
+
+			local camLook = camera.CFrame.LookVector
+			local flyVec = Vector3.zero
+			if moveDir.Magnitude > 0 then
+				flyVec += (camera.CFrame:VectorToWorldSpace(Vector3.new(moveDir.X, 0, -moveDir.Z)).Unit * state.FlySpeed)
+			end
+			if vertical ~= 0 then
+				flyVec += Vector3.new(0, vertical * state.FlySpeed, 0)
+			end
+
+			bodyVelocity.Velocity = flyVec
+			bodyGyro.CFrame = CFrame.lookAt(root.Position, root.Position + camLook)
+		end
+	end
+end)
+
+-- Áp dụng lại khi hồi sinh
+localPlayer.CharacterAdded:Connect(function(char)
+	char:WaitForChild("HumanoidRootPart")
+	task.wait(0.25)
+	if state.Invisible then setInvisible(true) end
+	if state.WalkSpeedEnabled then applyWalkSpeed() end
+	if state.JumpPowerEnabled then applyJumpPower() end
+	if state.FlyEnabled then startFly() end
+	if state.NoclipEnabled then applyNoclip() end
+	if state.ESP then setESP(true) end
+end)
+
