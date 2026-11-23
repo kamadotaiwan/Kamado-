@@ -1,0 +1,323 @@
+-- DANGKHOAPNG Boombox & Audio Controller with Startup Popup
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Thay ID ảnh sau khi tải ảnh lên Roblox Creator Dashboard (Decal / Image)
+local TOGGLE_IMAGE_ID = "rbxassetid://0" -- Ví dụ: "rbxassetid://1234567890"
+local SCRIPT_NAME = "DANGKHOAPNG"
+
+local THANK_YOU_MESSAGE = [[╭━━━『 ❤️ THANK YOU ❤️ 』━━━╮
+
+Cảm ơn mọi người đã tin tưởng và sử dụng Script của KHOA! 🪽
+KHOA xin chúc mọi người luôn vui vẻ, may mắn và có một ngày thật tuyệt vời! ❤️
+
+╰━━━━ BY: DANGKHOAPNGSCRIPT ━━━━╯]]
+
+-- Xóa UI cũ nếu chạy lại
+local existingGui = playerGui:FindFirstChild(SCRIPT_NAME .. "_UI")
+if existingGui then
+	existingGui:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = SCRIPT_NAME .. "_UI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Nút bật / tắt menu có gắn ảnh
+local toggleBtn = Instance.new("ImageButton")
+toggleBtn.Name = "ToggleMenuButton"
+toggleBtn.Size = UDim2.new(0, 64, 0, 64)
+toggleBtn.Position = UDim2.new(0, 20, 0.5, -32)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Image = TOGGLE_IMAGE_ID
+toggleBtn.ScaleType = Enum.ScaleType.Crop
+toggleBtn.Active = true
+toggleBtn.Draggable = true
+toggleBtn.Parent = screenGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 12)
+toggleCorner.Parent = toggleBtn
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(0, 200, 255)
+toggleStroke.Thickness = 2
+toggleStroke.Parent = toggleBtn
+
+-- Khung menu chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainMenu"
+mainFrame.Size = UDim2.new(0, 300, 0, 210)
+mainFrame.Position = UDim2.new(0, 96, 0.5, -105)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 27)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(60, 65, 75)
+mainStroke.Thickness = 1.5
+mainStroke.Parent = mainFrame
+
+-- Tiêu đề DANGKHOAPNG
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -20, 0, 36)
+titleLabel.Position = UDim2.new(0, 10, 0, 8)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = SCRIPT_NAME .. " // BOOMBOX"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 16
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = mainFrame
+
+-- Ô nhập Sound ID
+local idBox = Instance.new("TextBox")
+idBox.Name = "SoundIdInput"
+idBox.Size = UDim2.new(1, -24, 0, 38)
+idBox.Position = UDim2.new(0, 12, 0, 52)
+idBox.BackgroundColor3 = Color3.fromRGB(32, 35, 42)
+idBox.BorderSizePixel = 0
+idBox.ClearTextOnFocus = false
+idBox.Font = Enum.Font.Code
+idBox.PlaceholderText = "Nhập Sound ID (VD: 1843497734)..."
+idBox.Text = ""
+idBox.TextColor3 = Color3.fromRGB(240, 240, 240)
+idBox.PlaceholderColor3 = Color3.fromRGB(130, 135, 145)
+idBox.TextSize = 14
+idBox.Parent = mainFrame
+
+local idBoxCorner = Instance.new("UICorner")
+idBoxCorner.CornerRadius = UDim.new(0, 8)
+idBoxCorner.Parent = idBox
+
+-- Nút Play
+local playBtn = Instance.new("TextButton")
+playBtn.Name = "PlayButton"
+playBtn.Size = UDim2.new(0.5, -18, 0, 38)
+playBtn.Position = UDim2.new(0, 12, 0, 102)
+playBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 110)
+playBtn.BorderSizePixel = 0
+playBtn.Font = Enum.Font.GothamBold
+playBtn.Text = "PHÁT NHẠC"
+playBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+playBtn.TextSize = 14
+playBtn.Parent = mainFrame
+
+local playCorner = Instance.new("UICorner")
+playCorner.CornerRadius = UDim.new(0, 8)
+playCorner.Parent = playBtn
+
+-- Nút Stop
+local stopBtn = Instance.new("TextButton")
+stopBtn.Name = "StopButton"
+stopBtn.Size = UDim2.new(0.5, -18, 0, 38)
+stopBtn.Position = UDim2.new(0.5, 6, 0, 102)
+stopBtn.BackgroundColor3 = Color3.fromRGB(190, 55, 65)
+stopBtn.BorderSizePixel = 0
+stopBtn.Font = Enum.Font.GothamBold
+stopBtn.Text = "DỪNG NHẠC"
+stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopBtn.TextSize = 14
+stopBtn.Parent = mainFrame
+
+local stopCorner = Instance.new("UICorner")
+stopCorner.CornerRadius = UDim.new(0, 8)
+stopCorner.Parent = stopBtn
+
+-- Trạng thái
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "Status"
+statusLabel.Size = UDim2.new(1, -24, 0, 42)
+statusLabel.Position = UDim2.new(0, 12, 0, 152)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Text = "Trạng thái: Sẵn sàng"
+statusLabel.TextColor3 = Color3.fromRGB(170, 180, 195)
+statusLabel.TextSize = 12
+statusLabel.TextWrapped = true
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = mainFrame
+
+-- Popup cảm ơn khi mở script
+local popupOverlay = Instance.new("Frame")
+popupOverlay.Name = "ThankYouPopupOverlay"
+popupOverlay.Size = UDim2.new(1, 0, 1, 0)
+popupOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+popupOverlay.BackgroundTransparency = 0.45
+popupOverlay.ZIndex = 20
+popupOverlay.Parent = screenGui
+
+local popupCard = Instance.new("Frame")
+popupCard.Name = "PopupCard"
+popupCard.Size = UDim2.new(0, 380, 0, 220)
+popupCard.Position = UDim2.new(0.5, -190, 0.5, -110)
+popupCard.BackgroundColor3 = Color3.fromRGB(24, 26, 33)
+popupCard.BorderSizePixel = 0
+popupCard.ZIndex = 21
+popupCard.Parent = popupOverlay
+
+local popupCorner = Instance.new("UICorner")
+popupCorner.CornerRadius = UDim.new(0, 14)
+popupCorner.Parent = popupCard
+
+local popupStroke = Instance.new("UIStroke")
+popupStroke.Color = Color3.fromRGB(255, 95, 130)
+popupStroke.Thickness = 2
+popupStroke.Parent = popupCard
+
+local popupText = Instance.new("TextLabel")
+popupText.Name = "ThankYouText"
+popupText.Size = UDim2.new(1, -28, 1, -64)
+popupText.Position = UDim2.new(0, 14, 0, 12)
+popupText.BackgroundTransparency = 1
+popupText.Font = Enum.Font.GothamMedium
+popupText.Text = THANK_YOU_MESSAGE
+popupText.TextColor3 = Color3.fromRGB(255, 255, 255)
+popupText.TextSize = 13
+popupText.TextWrapped = true
+popupText.ZIndex = 22
+popupText.Parent = popupCard
+
+local closePopupBtn = Instance.new("TextButton")
+closePopupBtn.Name = "ClosePopupButton"
+closePopupBtn.Size = UDim2.new(0, 140, 0, 34)
+closePopupBtn.Position = UDim2.new(0.5, -70, 1, -44)
+closePopupBtn.BackgroundColor3 = Color3.fromRGB(235, 75, 115)
+closePopupBtn.BorderSizePixel = 0
+closePopupBtn.Font = Enum.Font.GothamBold
+closePopupBtn.Text = "ĐÓNG POPUP"
+closePopupBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closePopupBtn.TextSize = 13
+closePopupBtn.ZIndex = 22
+closePopupBtn.Parent = popupCard
+
+local closePopupCorner = Instance.new("UICorner")
+closePopupCorner.CornerRadius = UDim.new(0, 8)
+closePopupCorner.Parent = closePopupBtn
+
+closePopupBtn.MouseButton1Click:Connect(function()
+	popupOverlay.Visible = false
+end)
+
+-- Tìm Sound trên Boombox hoặc tạo Sound dự phòng
+local function getTargetSound()
+	local char = player.Character
+	local backpack = player:FindFirstChild("Backpack")
+
+	local containers = {}
+	if char then
+		table.insert(containers, char)
+	end
+	if backpack then
+		table.insert(containers, backpack)
+	end
+
+	for _, container in ipairs(containers) do
+		for _, item in ipairs(container:GetChildren()) do
+			if item:IsA("Tool") and string.find(string.lower(item.Name), "boombox") then
+				local existingSound = item:FindFirstChildWhichIsA("Sound", true)
+				if existingSound then
+					return existingSound, item
+				end
+				local handle = item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart", true)
+				if handle then
+					local newSound = Instance.new("Sound")
+					newSound.Name = SCRIPT_NAME .. "_Sound"
+					newSound.Looped = true
+					newSound.Volume = 1
+					newSound.Parent = handle
+					return newSound, item
+				end
+			end
+		end
+	end
+
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		local fallback = rootPart:FindFirstChild(SCRIPT_NAME .. "_FallbackSound")
+		if not fallback then
+			fallback = Instance.new("Sound")
+			fallback.Name = SCRIPT_NAME .. "_FallbackSound"
+			fallback.Looped = true
+			fallback.Volume = 1
+			fallback.Parent = rootPart
+		end
+		return fallback, nil
+	end
+
+	return nil, nil
+end
+
+local function normalizeSoundId(rawText)
+	local digits = string.match(rawText or "", "%d+")
+	if not digits then
+		return nil
+	end
+	return "rbxassetid://" .. digits
+end
+
+playBtn.MouseButton1Click:Connect(function()
+	local formattedId = normalizeSoundId(idBox.Text)
+	if not formattedId then
+		statusLabel.Text = "Trạng thái: ID nhạc không hợp lệ!"
+		statusLabel.TextColor3 = Color3.fromRGB(255, 110, 110)
+		return
+	end
+
+	local soundObj, boomboxTool = getTargetSound()
+	if not soundObj then
+		statusLabel.Text = "Trạng thái: Không tìm thấy đối tượng phát âm thanh."
+		statusLabel.TextColor3 = Color3.fromRGB(255, 110, 110)
+		return
+	end
+
+	if boomboxTool then
+		for _, desc in ipairs(boomboxTool:GetDescendants()) do
+			if desc:IsA("RemoteEvent") then
+				pcall(function()
+					desc:FireServer(formattedId)
+				end)
+			end
+		end
+	end
+
+	soundObj.SoundId = formattedId
+	soundObj.TimePosition = 0
+	soundObj.Looped = true
+	soundObj:Play()
+
+	statusLabel.Text = "Đang phát: " .. formattedId
+	statusLabel.TextColor3 = Color3.fromRGB(110, 235, 160)
+end)
+
+stopBtn.MouseButton1Click:Connect(function()
+	local soundObj = getTargetSound()
+	if soundObj then
+		soundObj:Stop()
+	end
+	statusLabel.Text = "Trạng thái: Đã dừng nhạc."
+	statusLabel.TextColor3 = Color3.fromRGB(220, 200, 110)
+end)
+
+-- Bật / tắt menu
+toggleBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+	local goalSize = mainFrame.Visible and UDim2.new(0, 64, 0, 64) or UDim2.new(0, 58, 0, 58)
+	TweenService:Create(toggleBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = goalSize
+	}):Play()
+end)
